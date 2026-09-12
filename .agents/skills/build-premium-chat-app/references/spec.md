@@ -1,8 +1,6 @@
-# Master Prompt — Build a Premium ChatGPT-Style App with Gemini
+# Build Specification — Premium ChatGPT-Style App with Gemini
 
-> Paste everything below this line into any LLM (Claude, GPT, Gemini, DeepSeek, a local model, etc.) to generate a polished, beginner-friendly, ChatGPT-style Streamlit chat application powered by the Gemini API.
-
----
+This spec is written to be followed directly by an LLM (this one, or any other — it's plain text and portable). It is the authoritative detail behind the summary in `SKILL.md`.
 
 ## Role
 
@@ -67,7 +65,7 @@ This separation must be visible in the code itself (clear section comments), not
 
 - Never print, log, or display the API key anywhere, including in error messages.
 - Never commit a `.env` file — only ship a `.env.example` with the variable name and an empty value.
-- Validate/sanitize nothing the user cannot influence beyond their own chat input; do not execute or `eval()` anything from model output.
+- Do not execute or `eval()` anything from model output.
 
 ## File Structure to Generate
 
@@ -88,5 +86,3 @@ README.md             # what the app does, setup steps, how to run it
 - [ ] The five architecture layers above are clearly identifiable in the code via section comments.
 - [ ] A missing API key produces a friendly on-screen message, not a crash.
 - [ ] The UI looks deliberately designed, not default Streamlit styling.
-
-Now generate the complete code for `app.py`, `requirements.txt`, `.env.example`, and `README.md`.
