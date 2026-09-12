@@ -6,7 +6,7 @@ Before starting a new project, check [`Templates/`](Templates) for ready-made bo
 
 ## 🧠 Skills
 
-[`skills/`](skills) holds reusable **prompts** (not code) — paste one into any LLM to generate a project from scratch, rather than writing it by hand. Model-agnostic by design: the same prompt should produce a working result whether you run it through Claude, GPT, Gemini, DeepSeek, or a local model.
+[`.agents/skills/`](.agents/skills) holds reusable **prompts** (not code) — paste one into any LLM to generate a project from scratch, rather than writing it by hand. Model-agnostic by design: the same prompt should produce a working result whether you run it through Claude, GPT, Gemini, DeepSeek, or a local model. See [`.agents/skills/ui/`](.agents/skills/ui) for UI-generation prompts.
 
 ## 📂 Repository Structure
 
