@@ -6,7 +6,7 @@ Before starting a new project, check [`Templates/`](Templates) for ready-made bo
 
 ## 🧠 Skills
 
-[`.agents/skills/`](.agents/skills) holds Claude Code **skills** — each a `<name>/SKILL.md` (+ optional `references/`) that Claude Code auto-discovers and can invoke directly (e.g. `/build-premium-chat-app`), or that you can trigger just by describing what you want. The `references/` content is plain text, so it also works pasted manually into any other LLM.
+[`.claude/skills/`](.claude/skills) holds Claude Code **skills** — each a `<name>/SKILL.md` (+ optional `references/`) that Claude Code auto-discovers and can invoke directly (e.g. `/build-premium-chat-app`), or that you can trigger just by describing what you want. The `references/` content is plain text, so it also works pasted manually into any other LLM.
 
 ## 📂 Repository Structure
 
