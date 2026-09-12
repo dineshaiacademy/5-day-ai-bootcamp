@@ -4,6 +4,10 @@
 
 Before starting a new project, check [`Templates/`](Templates) for ready-made boilerplate (Streamlit UI, plain LLM API script, RAG starter) — copy one into the relevant day's `Projects/` folder instead of starting from scratch.
 
+## 🧠 Skills
+
+[`skills/`](skills) holds reusable **prompts** (not code) — paste one into any LLM to generate a project from scratch, rather than writing it by hand. Model-agnostic by design: the same prompt should produce a working result whether you run it through Claude, GPT, Gemini, DeepSeek, or a local model.
+
 ## 📂 Repository Structure
 
 Each day is split into two independent folders:
