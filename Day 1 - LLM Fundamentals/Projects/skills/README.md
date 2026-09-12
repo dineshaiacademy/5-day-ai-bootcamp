@@ -1,6 +1,6 @@
 # 🧠 Skills
 
-Reusable prompts for regenerating this project (or similar ones) with any LLM.
+Reusable prompts for generating projects with any LLM. These aren't tied to one specific project — copy a prompt out, run it through an LLM, and drop the result into a new folder under `Day 1 - LLM Fundamentals/Projects/`.
 
 ## `build-premium-chat-app.md`
 
@@ -11,7 +11,7 @@ A self-contained "master prompt" that instructs an LLM to build a premium, ChatG
 1. Open [`build-premium-chat-app.md`](build-premium-chat-app.md).
 2. Copy everything under the `---` line.
 3. Paste it into any LLM chat (Claude, ChatGPT, Gemini, DeepSeek, a local model in LM Studio — any of them).
-4. Save the generated `app.py`, `requirements.txt`, `.env.example`, and `README.md` into this project's root folder (one level up from `skills/`).
+4. Create a new project folder, e.g. `Day 1 - LLM Fundamentals/Projects/premium-gemini-chat/`, and save the generated `app.py`, `requirements.txt`, `.env.example`, and `README.md` into it.
 5. Copy `.env.example` to `.env` and fill in your `GAISTUDIO_API_KEY`.
 6. Run:
    ```bash
