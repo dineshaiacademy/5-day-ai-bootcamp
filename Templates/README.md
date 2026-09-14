@@ -9,6 +9,7 @@ Reusable boilerplate for common project types, so you don't rebuild the same sca
 | [`streamlit-basic/`](streamlit-basic) | A minimal Streamlit UI wired to an LLM call |
 | [`llm-api-integration/`](llm-api-integration) | A plain Python script that calls an LLM API — no UI |
 | [`rag-starter/`](rag-starter) | A minimal Retrieval-Augmented Generation scaffold (load → embed → query) |
+| [`prompts/`](prompts) | Copy-paste prompts that produce identical Streamlit apps regardless of which LLM writes the code |
 
 ## How to use a template
 

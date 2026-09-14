@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "local-chat-app",
+      "runtimeExecutable": "venv/Scripts/streamlit.exe",
+      "runtimeArgs": ["run", "Day 1 - LLM Fundamentals/Projects/local-chat-app/app.py", "--server.port", "8501", "--server.headless", "true"],
+      "port": 8501
+    },
+    {
+      "name": "streamlit-test-app",
+      "runtimeExecutable": "venv/Scripts/streamlit.exe",
+      "runtimeArgs": ["run", "Day 1 - LLM Fundamentals/Projects/streamlit-test-app/app.py", "--server.port", "8511", "--server.headless", "true"],
+      "port": 8511
+    }
+  ]
+}
