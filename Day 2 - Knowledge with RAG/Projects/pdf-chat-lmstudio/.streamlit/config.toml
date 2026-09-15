@@ -1,0 +1,82 @@
+# Dinesh AI Academy theme — deep indigo/violet brand color on a clean,
+# premium neutral canvas, with a signature dark sidebar rail.
+# https://docs.streamlit.io/develop/api-reference/configuration/config.toml
+
+[theme.light]
+primaryColor = "#5B4FE8"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F4FC"
+textColor = "#1C1B29"
+linkColor = "#5B4FE8"
+borderColor = "#E5E2F5"
+codeBackgroundColor = "#F5F4FC"
+codeTextColor = "#1C1B29"
+
+redColor = "#DC2626"
+orangeColor = "#D97706"
+yellowColor = "#CA8A04"
+greenColor = "#16A34A"
+blueColor = "#2563EB"
+violetColor = "#5B4FE8"
+grayColor = "#6B7280"
+
+chartCategoricalColors = ["#5B4FE8", "#16A34A", "#D97706", "#2563EB", "#DC2626", "#8B7FFF", "#6B7280"]
+
+[theme.dark]
+primaryColor = "#8B7FFF"
+backgroundColor = "#100F1C"
+secondaryBackgroundColor = "#1A1830"
+textColor = "#EDEBFA"
+linkColor = "#8B7FFF"
+borderColor = "#2E2B57"
+codeBackgroundColor = "#1A1830"
+codeTextColor = "#EDEBFA"
+
+redColor = "#F87171"
+orangeColor = "#FBBF24"
+yellowColor = "#FACC15"
+greenColor = "#4ADE80"
+blueColor = "#60A5FA"
+violetColor = "#8B7FFF"
+grayColor = "#9CA3AF"
+
+chartCategoricalColors = ["#8B7FFF", "#4ADE80", "#FBBF24", "#60A5FA", "#F87171", "#5B4FE8", "#9CA3AF"]
+
+# A single dark, branded rail for the sidebar in both modes — the
+# "premium app" look of a fixed navigation column next to a light workspace.
+[theme.light.sidebar]
+backgroundColor = "#171532"
+secondaryBackgroundColor = "#211F42"
+textColor = "#E9E7F7"
+borderColor = "#2E2B57"
+primaryColor = "#8B7FFF"
+linkColor = "#B3ABFF"
+codeBackgroundColor = "#211F42"
+codeTextColor = "#E9E7F7"
+
+[theme.dark.sidebar]
+backgroundColor = "#0B0A16"
+secondaryBackgroundColor = "#171532"
+textColor = "#E9E7F7"
+borderColor = "#2E2B57"
+primaryColor = "#8B7FFF"
+linkColor = "#B3ABFF"
+codeBackgroundColor = "#171532"
+codeTextColor = "#E9E7F7"
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+
+baseFontSize = 15
+baseFontWeight = 400
+codeFontSize = "0.85rem"
+headingFontSizes = ["30px", "22px", "18px", "16px", "14px", "13px"]
+headingFontWeights = [700, 600, 600, 600, 500, 500]
+linkUnderline = false
+
+baseRadius = "10px"
+buttonRadius = "10px"
+showWidgetBorder = true
+showSidebarBorder = true
