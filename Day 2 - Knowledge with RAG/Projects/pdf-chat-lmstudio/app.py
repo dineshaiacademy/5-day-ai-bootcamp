@@ -184,7 +184,12 @@ with st.sidebar:
             chat_models = [m for m in all_models if "embed" not in m.lower()] or all_models
         embed_models = [m for m in all_models if "embed" in m.lower()]
 
-        default_chat = "gemini-flash-latest" if "gemini-flash-latest" in chat_models else chat_models[0]
+        preferred_chat_models = (
+            ("gemini-3.6-flash", "gemini-flash-latest")
+            if provider_name.startswith("Gemini")
+            else ("lfm2.5-350m",)
+        )
+        default_chat = next((m for m in preferred_chat_models if m in chat_models), chat_models[0])
         model = st.selectbox(
             "Chat model", chat_models, index=chat_models.index(default_chat), help="Models available from the selected provider."
         )

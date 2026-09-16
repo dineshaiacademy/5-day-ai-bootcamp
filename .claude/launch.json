@@ -18,6 +18,12 @@
       "runtimeExecutable": "venv/Scripts/streamlit.exe",
       "runtimeArgs": ["run", "Day 2 - Knowledge with RAG/Projects/pdf-chat-lmstudio/app.py", "--server.port", "8521", "--server.headless", "true"],
       "port": 8521
+    },
+    {
+      "name": "tool-workflow-chat",
+      "runtimeExecutable": "venv/Scripts/streamlit.exe",
+      "runtimeArgs": ["run", "Day 3 - Tools & Workflows/Projects/tool-workflow-chat/app.py", "--server.port", "8531", "--server.headless", "true"],
+      "port": 8531
     }
   ]
 }
