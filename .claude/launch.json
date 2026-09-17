@@ -24,6 +24,18 @@
       "runtimeExecutable": "venv/Scripts/streamlit.exe",
       "runtimeArgs": ["run", "Day 3 - Tools & Workflows/Projects/tool-workflow-chat/app.py", "--server.port", "8531", "--server.headless", "true"],
       "port": 8531
+    },
+    {
+      "name": "agent-workflow-demo",
+      "runtimeExecutable": "venv/Scripts/streamlit.exe",
+      "runtimeArgs": ["run", "Day 4 · Agents & MCP/Projects/agent-workflow-demo/app.py", "--server.port", "8541", "--server.headless", "true"],
+      "port": 8541
+    },
+    {
+      "name": "mcp-notes-demo",
+      "runtimeExecutable": "venv/Scripts/streamlit.exe",
+      "runtimeArgs": ["run", "Day 4 · Agents & MCP/Projects/mcp-notes-demo/app.py", "--server.port", "8542", "--server.headless", "true"],
+      "port": 8542
     }
   ]
 }
