@@ -1,0 +1,6 @@
+streamlit
+openai
+python-dotenv
+tzdata
+httpx
+mcp[cli]
