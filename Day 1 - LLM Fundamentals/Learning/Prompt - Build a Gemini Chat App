@@ -1,0 +1,73 @@
+ROLE
+Act as a senior full-stack AI engineer building a polished, production-quality demo
+app for "Dinesh AI Academy" — a hands-on AI engineering bootcamp.
+
+TASK
+Build a complete, runnable Streamlit chat application that talks to Google's Gemini
+API. When you're done, install the dependencies and run the app so it opens in my
+browser.
+
+CONTEXT
+- This is a teaching artifact for a "Day 1: LLM Fundamentals" workshop — it must
+  look professional and premium, not like a rough prototype.
+- I have (or will get) a free Gemini API key from https://aistudio.google.com/apikey.
+- Target stack: Python 3.10+, Streamlit, the official `google-genai` Python SDK.
+- The app must run entirely locally with `streamlit run app.py`.
+
+REQUIREMENTS — build exactly this:
+
+1. Project files
+   - `app.py` — the full Streamlit application (see spec below)
+   - `requirements.txt` — pinned to at least `streamlit`, `google-genai`, `python-dotenv`
+   - `.env.example` — documents `GEMINI_API_KEY=` with a one-line comment on where to
+     get one
+   - `.streamlit/config.toml` — a clean, modern light theme (indigo/violet primary
+     color, generous corner radius, no harsh default red/orange)
+   - `README.md` — a 5-line quickstart: create a venv, install requirements, copy
+     `.env.example` to `.env` and add the key, run `streamlit run app.py`
+
+2. Branding
+   - Browser tab title: "Dinesh AI Academy · Gemini Chat"
+   - App header: "Dinesh AI Academy — Gemini Chat Studio" with a one-line subtitle:
+     "Built live in a hands-on session — Day 1: LLM Fundamentals"
+   - Footer caption: "Made at Dinesh AI Academy · Powered by Google Gemini"
+
+3. Sidebar (settings only, not main content)
+   - Read `GEMINI_API_KEY` from `.env` via `python-dotenv`; if missing, show a clear
+     error with a link to get one, plus a text input to paste a key for this session
+     only (never persisted to disk)
+   - Model picker: a dropdown of current Gemini flash-tier models (check the
+     `google-genai` SDK/docs for the exact current model ids — e.g. `gemini-3.5-flash`
+     and `gemini-3.5-flash-lite`, or newer if available)
+   - Temperature slider (0.0-2.0, default 0.7)
+   - System prompt text area (editable, default: "You are a friendly, knowledgeable
+     teaching assistant for Dinesh AI Academy. Answer clearly and concisely.")
+   - "Clear conversation" button that resets chat history
+   - A small connected/not-connected status indicator
+
+4. Main chat area
+   - Use `st.chat_message` and `st.chat_input` — never a custom-built chat UI
+   - Keep the full conversation history in `st.session_state`
+   - Stream the model's response token-by-token with `st.write_stream`, using
+     Gemini's real streaming API — not a fake typewriter effect
+   - Show a friendly welcome message before the first user message ("Hi! Ask me
+     anything about what we covered today.")
+   - Handle API errors gracefully (invalid key, rate limit, network) with a clear
+     `st.error` — never a raw traceback
+
+5. Polish
+   - `layout="wide"`, with a fitting icon in `st.set_page_config`
+   - Sentence-case labels everywhere — no ALL CAPS or Title Case shouting
+   - No lorem-ipsum placeholder text anywhere — every string must be final, real copy
+
+FORMAT — what "done" looks like:
+- Show me the full contents of every file you create, in code blocks, before running
+  anything.
+- Then run `pip install -r requirements.txt` and `streamlit run app.py` in the
+  terminal.
+- Confirm the local URL it's running on and tell me to open it in my browser.
+- If anything fails (missing key, import error), fix it yourself and re-run — don't
+  just report the error and stop.
+
+Do not ask me clarifying questions — make reasonable choices for anything not
+specified above and build the complete, working app now.
