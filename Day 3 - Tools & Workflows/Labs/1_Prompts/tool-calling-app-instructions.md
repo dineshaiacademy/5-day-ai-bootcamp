@@ -1,54 +1,102 @@
-# Instructions: Tool Calling Demo (Gemini + Streamlit)
+# Instructions: Tool Calling Demo (Gemini + LM Studio, Streamlit)
+
+This is the prompt referenced by the "🛠️ Hands-On Practice: Build a Tool-Calling
+AI Chat App" page on the course LMS — the steps below pick up from that page's
+step 6 ("Use the AI Engineering Prompt"). If you haven't done steps 1-5 there yet
+(installing Python, getting a Gemini key, installing VS Code + GitHub Copilot),
+do those first.
 
 ## How to use the prompt
-1. Open [`tool-calling-app-prompt.md`](tool-calling-app-prompt.md).
-2. Copy the entire file contents as-is — don't edit the wording.
-3. Paste it into GitHub Copilot Chat and send it.
-4. Copilot will create a new dated folder (e.g. `ai_app_2026_09_24`) containing
-   the full app, install dependencies, and run it for you.
+1. Create and open a fresh project folder, exactly as the LMS page describes:
+   ```bash
+   mkdir tool-chat-test
+   cd tool-chat-test
+   code .
+   ```
+2. In VS Code, open GitHub Copilot Chat and switch it to **Agent mode**. Make
+   sure you're working inside the `tool-chat-test` folder.
+3. Open [`tool-calling-app-prompt.md`](tool-calling-app-prompt.md), copy the
+   entire file contents as-is, and paste it into Copilot Chat.
+4. Let Copilot create the files directly in `tool-chat-test/` (no extra
+   subfolder — the prompt is written to do this), install dependencies, and
+   run the app.
 
-## Where the app ends up
-Each run creates a fresh, self-contained folder named `ai_app_<date>` (underscore
-date format, e.g. `ai_app_2026_09_24`) so re-running the prompt on a different day
-never overwrites a previous build.
+## Expected files
+```text
+tool-chat-test/
+│
+├── app.py
+├── requirements.txt
+├── .env
+├── .env.example
+├── README.md
+│
+└── .streamlit/
+    └── config.toml
+```
 
 ## Before you start
 - Get a free Gemini API key at https://aistudio.google.com/apikey.
-- Put it in the app's `.env` file **before** you run it (copy `.env.example` to
-  `.env` inside the generated `ai_app_<date>` folder, then set
-  `GEMINI_API_KEY=...`). There's no way to enter a key from the browser — if
-  it's missing, the fix is to edit `.env` and restart the app.
+- Copilot creates a real `.env` file for you with `GEMINI_API_KEY=` already in
+  it — just open it and paste your key after the `=`. No copying or renaming
+  needed. (LM Studio doesn't need a key at all — just have LM Studio running
+  locally with a model loaded.)
+
+## Two providers, on purpose
+This app can talk to **Gemini (cloud)** or **LM Studio (local)**, switchable
+from a sidebar dropdown. That's not just a nice-to-have — it's a debugging
+tool. If something goes wrong (a bad/expired key, hitting a rate limit, a
+model id that's been retired), switch providers and try the same question
+again:
+- Still broken on LM Studio too → the bug is in the app itself.
+- Works fine on LM Studio but not Gemini → the problem is on the Gemini side
+  specifically (key, quota, model availability), not your code.
 
 ## What this app is showing
-The core mechanic behind every "AI agent" or "tool calling" demo: the model gets
-told what tools it *could* use, decides for itself whether a question needs one,
-and your own code runs the tool and hands the result back. There are exactly two
-tools — a calculator and a current-date-time lookup — kept deliberately simple so
-the mechanism stays visible instead of getting lost in a big toolset. The "How
-this reply was generated" panel under each answer shows exactly what happened:
-which tool was called (if any), with what arguments, and what it returned.
+The core mechanic behind every "AI agent" or "tool calling" demo:
+```text
+User → LLM → Tool Selection → Tool Execution → LLM → Final Response
+```
+The model gets told what tools it *could* use (a calculator and a weather
+lookup here), decides for itself whether a question needs one, and your own
+code runs the tool and hands the result back. Turn on the **Tool-Call Trace**
+option in the sidebar to see the full flow for each reply: whether a tool was
+needed, which one, what arguments were generated, what it returned, and how
+that fed into the final answer.
+
+Remember: **the LLM never actually runs the tool itself.** It decides "I need
+this tool," your application executes it, and the result goes back to the LLM
+to generate the final response. That's the whole architecture.
 
 ## Try it with
-Ask these three kinds of questions and check the panel under each answer:
+These are the exact three examples from the LMS practice page:
 
-- **Needs the calculator:** "What is 4562 multiplied by 8917?" → the panel
-  should show `calculator` was called with that expression, and the answer
-  should match the correct product (40,679,354).
-- **Needs the date/time tool:** "What's today's date and the exact time right
-  now?" → the panel should show `get_current_datetime` was called, and the
-  answer should match the real current time.
-- **Needs no tool at all:** "What's the capital of France?" or "Explain what a
-  system prompt is." → the panel should say no tool was needed — the model
-  answered directly from its own knowledge.
+- **Example 1 — Calculator tool:** "What's 47 times 89?" → the trace should
+  show `calculate` was called, and the final answer should be **4,183**.
+- **Example 2 — Weather tool:** "What's the weather in Delhi?" → the trace
+  should show `get_weather` was called with `"Delhi"` (this app's weather data
+  is simulated, not live — that's expected, the point is watching the tool
+  get selected and called).
+- **Example 3 — No tool required:** "Explain what an AI tool is." → the trace
+  should show no tool was called — the model answers directly.
 
-For a fuller demo script with expected answers, see
+For a fuller demo script with more examples, see
 [`../4_Testing/test-questions-and-answers.md`](../4_Testing/test-questions-and-answers.md).
 
+## 🏆 Practice challenge
+Once the guided app is working, try adding one more tool yourself and see if
+the model automatically decides when to use it — for example
+`get_current_time()`, `convert_currency()`, or `get_stock_price()`. This isn't
+part of the base build on purpose: working out how to add a tool yourself (a
+new function + its schema + wiring it into the same loop) is the point of the
+exercise.
+
 ## If you want the fuller version
-This lab is intentionally minimal — two tools, Gemini only, no LangChain. A
-much more complete version of this same idea (multiple providers including a
-local LM Studio option, a "Plain Chat vs Tools + Workflow" toggle, full
-request/response JSON shown per step) already exists in this repo at
-[`../../Projects/tool-workflow-chat`](../../Projects/tool-workflow-chat) — worth
-comparing once this minimal build is working, to see how the same mechanic
-scales up.
+This lab is intentionally minimal — two tools, two providers, no LangChain. A
+more complete version of the same idea (four tools, a "Plain Chat vs Tools +
+Workflow" toggle, the full request/response JSON shown per step) already
+exists in this repo at
+[`../../Projects/tool-workflow-chat`](../../Projects/tool-workflow-chat) — this
+lab's provider-switching and tool-loop pattern is deliberately modeled on that
+working app, so it's worth comparing once this minimal build is working, to
+see how the same mechanic scales up.

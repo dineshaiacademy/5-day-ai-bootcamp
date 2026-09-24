@@ -37,6 +37,24 @@ CONTEXT
   `delete_collection` in a bare `try/except ValueError` — recent `chromadb`
   versions raise `chromadb.errors.NotFoundError` instead, which a narrow
   `except ValueError` won't catch, crashing the first-ever upload.
+- No key will be present in `.env` at build time — you are building this
+  before the user has pasted in their Gemini key. The app itself must never
+  crash because of that: it should render cleanly in the "not connected"
+  state, and the PDF upload/extract/chunk step should work independently of
+  whether Gemini is reachable (embedding will fail gracefully with the
+  existing error handling until a real key is added).
+- PDF text can contain arbitrary Unicode (curly quotes, bullets, accented
+  characters, symbols). Handle it safely:
+  - Never `print()` or log extracted PDF text (or any exception message that
+    might contain it) to the console — Windows terminals often use a
+    non-UTF-8 encoding (cp1252) and will crash with `UnicodeEncodeError` on
+    characters like `●` or smart quotes. Route everything through Streamlit
+    UI calls (`st.write`, `st.error`, `st.caption`) instead, which render in
+    the browser and don't have this problem.
+  - If you write extracted text to any file at all, open it with
+    `encoding="utf-8"` explicitly — don't rely on the platform default.
+  - This same rule applies to emoji used in UI strings (🟢🔴📄💬 etc.) — fine
+    inside Streamlit calls, never inside a `print()`/logging statement.
 
 REQUIREMENTS — build exactly this, and nothing more:
 
@@ -119,10 +137,13 @@ FORMAT — what "done" looks like:
 - Run `pip install -r requirements.txt` and `streamlit run app.py` from inside
   that folder.
 - Confirm the local URL and tell me to open it in my browser.
-- Before declaring done, actually test both chat modes yourself if you're able
-  to: send a question with no PDF uploaded, and separately upload a PDF and
-  send a question about it — confirm both complete without an exception, not
-  just that the server started without crashing.
+- Before declaring done, verify as much as you actually can without a real
+  Gemini key: confirm the app loads with no exception in the "not connected"
+  state, and confirm a PDF can be uploaded and its text extracted/chunked
+  without an error (the embedding/chat calls themselves will only succeed
+  once a real key is added — that's expected, not a bug). If a key does
+  happen to work, go further and actually test both chat modes: a question
+  with no PDF uploaded, and a question about an uploaded PDF.
 - If something fails, fix it yourself and re-run — don't stop and just report it.
 
 Do not ask clarifying questions. Build exactly this scope — nothing more, nothing
