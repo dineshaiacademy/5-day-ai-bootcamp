@@ -1,68 +1,69 @@
 # Test the app: questions to ask and answers to expect
 
-This app has exactly two tools — `calculate` and `get_weather` — and the model
-decides for itself whether a question needs one. The test here isn't "is the
-answer in a document" (that's Day 2); it's "did the model call the right tool
-when it needed one, and correctly skip tools when it didn't." The Tool-Call
-Trace panel under each answer (toggle it on in the sidebar) is what proves it.
+This tests the **MCP Expense Lab** — a Gemini agent with 7 tools (add / list / delete expenses,
+spending summary, currency conversion, calculator, current date) reached over an MCP server.
+**Restart the MCP server first** so you start from the same 5 sample expenses (₹4,419 total), then ask
+the questions in order in the **Agent Chat** tab. Expand **🔧 Tool calls** under each reply to check the trace.
 
 ---
 
 ## Positive examples — the question NEEDS a tool
 
-### 1. "What's 47 times 89?"
-**Expect:** The trace shows `calculate` was called with that expression, and
-the final answer is the correct product: **4,183**. This is the exact example
-from the LMS practice page.
+### 1. "How much did I spend on travel?"
+**Expect:** `get_spending_summary` (or `list_expenses`) with `category="travel"`. The one travel expense
+(Metro recharge) is **₹600**.
 
-### 2. "What's the weather in Delhi?"
-**Expect:** The trace shows `get_weather` was called with `"Delhi"`, and the
-final answer reports the (simulated) temperature and conditions it returned.
-This is also directly from the LMS practice page. The weather data is mocked,
-not live — that's expected at this scope.
+### 2. "Add 450 rupees for lunch today"
+**Expect:** exactly **one** `add_expense` call (`amount=450`, `category="food"`). The new total is **₹4,869**.
+(A second identical `add_expense` in the trace would be a bug — the app blocks duplicate calls.)
 
-### 3. "If I'm 3891 days old, roughly how many years is that? Use 365.25 days
-per year."
-**Expect:** The trace shows `calculate` was called with an expression like
-`3891 / 365.25`, and the answer is approximately **10.65 years**.
+### 3. "Convert my total spending to USD"
+**Expect:** a spending-summary call followed by `convert_currency` (fixed demo rate: 83 INR = 1 USD).
+After test 2 the answer is **≈ $58.66**; on a fresh server it would be ≈ $53.24.
 
----
+### 4. "Delete expense 2 and show the new summary"
+**Expect:** `delete_expense` with `expense_id=2` (the "Metro recharge", ₹600), then a summary call.
+After tests 1–3 the total drops to **₹4,269**.
 
-## Negative examples — the question needs NO tool at all
+### 5. "What's (348 times 12) minus 900, then add 15% to that?"
+**Expect:** a `calculate` call, result **3,767.4** — the agent uses the tool instead of doing the math itself.
 
-This is the more important half of the test — it proves the model isn't
-calling tools reflexively for everything, only when it actually needs to.
+### 6. "Give me a monthly report for September 2026"
+**Expect:** `get_spending_summary` called with `month="2026-09"` (optionally `list_expenses` too). The numbers
+come from the tool, not from the model adding things up — on a fresh server: **₹4,419 across 5 expenses**.
 
-### 4. "Explain what an AI tool is."
-**Expect:** The trace shows no tool was called — a direct, from-knowledge
-answer. This is the exact "no tool required" example from the LMS practice
-page.
-
-### 5. "What's the capital of France?"
-**Expect:** The trace shows no tool was needed — the model answers "Paris"
-directly, with no calculator or weather call.
-
-### 6. "What's 2 + 2?"
-**Expect:** This one's a judgment call worth discussing live — a model *could*
-reasonably answer "4" directly without calling `calculate`, since it's trivial
-arithmetic. Either outcome (tool called, or answered directly) is acceptable;
-what matters is that the trace panel accurately reflects whichever one
-actually happened.
+### 7. "What is today's date?"
+**Expect:** a `get_current_date` call and the real date and weekday.
 
 ---
 
-## Provider check — run the same test twice
-This app supports both Gemini and LM Studio. If any of the above misbehaves on
-one provider, switch to the other in the sidebar and re-ask the exact same
-question:
-- Fails on both → the bug is in the app's tool-calling logic.
-- Fails only on Gemini → likely a key, quota, or model-availability issue on
-  the Gemini side, not the app.
-- Fails only on LM Studio → check that LM Studio is running locally with a
-  model loaded that actually supports tool calling (not every local model
-  does).
+## Negative examples — no tool exists, or none is needed
+
+This is the more important half: it proves the agent only uses tools it really has.
+
+### 8. "What's the weather like today?"
+**Expect:** **no tool call.** The agent says plainly it can't check the weather — it must not invent one.
+
+### 9. "What's the capital of France?"
+**Expect:** no tool call — a direct answer, "Paris".
+
+### 10. "Explain what MCP stands for."
+**Expect:** no tool call — "Model Context Protocol".
+
+---
+
+## Reliability checks
+
+- **Model attribution:** the caption under every answer shows which Gemini model answered. With a free key
+  it is normal to see a lite model sometimes — the app switches models when one is rate-limited.
+- **Rate-limit recovery:** ask 5–6 questions quickly. You should see every question answered, possibly with
+  a "Gemini is busy or rate-limited. Retrying in Ns…" notice — never a raw error or a blank answer.
+- **Bad key:** put a wrong key in `.env`, refresh the page → the sidebar shows the key was rejected and the
+  app explains how to fix it.
+- **No key:** empty `GEMINI_API_KEY=` → a warning explains what to do and the chat box is disabled.
+- **Server stopped:** stop the MCP server and ask a question → a message with the exact command to start it.
 
 ## After the base build works
-Try the LMS's practice challenge: add a third tool yourself (e.g.
-`get_current_time()`) and ask a question that should trigger it, to confirm
-the model picks it up correctly alongside the original two.
+Do the practice challenge in
+[`../1_Prompts/STUDENT_STEP_BY_STEP_GUIDE.md`](../1_Prompts/STUDENT_STEP_BY_STEP_GUIDE.md): add a `set_budget` /
+`check_budget` tool to the server, restart it, and confirm the Tool Explorer finds it with no client changes.

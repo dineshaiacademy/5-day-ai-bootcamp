@@ -1,0 +1,753 @@
+<!--
+  MOODLE-READY CONTENT: Day 5 · Evaluation & Observability
+  How to use:
+    1. In Moodle: Add an activity or resource -> Page (or a Text and media area).
+    2. In the editor, click the "</>" (HTML / Source code) button.
+    3. Paste EVERYTHING between the "PASTE START" and "PASTE END" markers.
+  Built with inline styles, tables and HTML entities only (no <style>, <script>, SVG or flexbox)
+  because Moodle's HTML cleaner removes those. It renders the same in the Boost and Classic themes and on phones.
+-->
+<!-- ===================== PASTE START ===================== -->
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #1f2937; max-width: 900px;">
+
+<!-- ========== HEADER ========== -->
+<div style="background-color: #0f3d6e; color: #ffffff; padding: 24px; border-radius: 10px; margin-bottom: 24px;">
+  <p style="margin: 0; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #bcd6f5;">Day 5 &middot; Memory, Guardrails &amp; Evaluation &middot; Session 3</p>
+  <h2 style="margin: 6px 0 8px 0; color: #ffffff; font-size: 28px;">&#128202; Evaluation &amp; Observability: Proving Your AI App Works, and Watching It in Production</h2>
+  <p style="margin: 0; color: #e5eefb;">Reading time: about 25 minutes &nbsp;|&nbsp; Lab: <strong>3-Evaluating_LLM_Outputs.ipynb</strong> &nbsp;|&nbsp; Level: Beginner to Intermediate</p>
+</div>
+
+<!-- ========== OBJECTIVES ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">&#127919; Learning objectives</h3>
+<p>By the end of this section you will be able to:</p>
+<ol>
+  <li><strong>Explain</strong> the difference between <strong>evaluation</strong> (testing <em>before</em> you release) and <strong>observability</strong> (watching <em>after</em> you release).</li>
+  <li><strong>Build</strong> an eval dataset and score answers with three methods: <strong>reference-based</strong>, <strong>LLM-as-a-judge</strong> and <strong>human review</strong>.</li>
+  <li><strong>Evaluate an agent</strong> on more than its final answer: task success, correct tool use and number of steps.</li>
+  <li><strong>Calculate</strong> a pass rate and use it to catch a <strong>regression</strong>.</li>
+  <li><strong>Describe</strong> what to record for every production request (logs, traces, metrics) and what you must <strong>never</strong> record.</li>
+</ol>
+
+<!-- ========== 1. TWO QUESTIONS ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">1. Two questions every AI app must answer</h3>
+
+<table style="width: 100%; border-collapse: separate; border-spacing: 8px 0; margin: 12px 0 20px 0;">
+  <tr>
+    <td style="width: 50%; vertical-align: top; background-color: #dbeafe; border: 2px solid #1d4ed8; border-radius: 10px; padding: 16px;">
+      <p style="margin: 0 0 6px 0; font-size: 18px; color: #1e3a8a;"><strong>&#129514; EVALUATION</strong></p>
+      <p style="margin: 0 0 8px 0;"><strong>Question:</strong> "Is my app good enough to release?"</p>
+      <p style="margin: 0 0 8px 0;"><strong>When:</strong> <u>Before</u> release, and again after <u>every</u> change.</p>
+      <p style="margin: 0 0 8px 0;"><strong>Input:</strong> a fixed test set that <em>you</em> write.</p>
+      <p style="margin: 0;"><strong>Output:</strong> a score, such as a pass rate of 90%.</p>
+    </td>
+    <td style="width: 50%; vertical-align: top; background-color: #dcfce7; border: 2px solid #15803d; border-radius: 10px; padding: 16px;">
+      <p style="margin: 0 0 6px 0; font-size: 18px; color: #14532d;"><strong>&#128301; OBSERVABILITY</strong></p>
+      <p style="margin: 0 0 8px 0;"><strong>Question:</strong> "What is my app actually doing for real users right now?"</p>
+      <p style="margin: 0 0 8px 0;"><strong>When:</strong> <u>After</u> release, all the time.</p>
+      <p style="margin: 0 0 8px 0;"><strong>Input:</strong> real user traffic.</p>
+      <p style="margin: 0;"><strong>Output:</strong> logs, traces, dashboards and alerts.</p>
+    </td>
+  </tr>
+</table>
+
+<p><strong>Real-world analogy: a new car.</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0 20px 0;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Car</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">AI application</th>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Crash tests and a test track run in the factory <strong>before</strong> the car is sold</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Evaluation</strong>: run a fixed test set before every release</td>
+  </tr>
+  <tr style="background-color: #f8fafc;">
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">The dashboard warning lights and the trip computer <strong>while you drive</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Observability</strong>: metrics and alerts from real traffic</td>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">A mechanic reads the car's error log to find out <strong>why</strong> the engine light came on</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Tracing</strong>: follow one request step by step to find the cause of a problem</td>
+  </tr>
+</table>
+
+<div style="background-color: #fff7ed; border-left: 6px solid #ea580c; padding: 14px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0;"><strong>&#9888; You need both.</strong> Evaluation only tests the cases you thought of. Observability shows you the cases you did <em>not</em> think of, and those become new eval cases. Section 10 shows how the two feed each other.</p>
+</div>
+
+<!-- ======================================================= -->
+<!-- ================= PART A: EVALUATION ================== -->
+<!-- ======================================================= -->
+<div style="background-color: #1d4ed8; color: #ffffff; padding: 12px 18px; border-radius: 8px; margin: 32px 0 8px 0;">
+  <p style="margin: 0; font-size: 20px;"><strong>PART A &middot; &#129514; EVALUATION</strong> (before release)</p>
+</div>
+
+<!-- ========== 2. VIBES ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">2. Why "it looked right when I tried it" is not enough</h3>
+
+<p>Most beginners test an AI app by typing a few questions and reading the answers. This is called <strong>vibes-based testing</strong>. It only tells you about <strong>one version of the app on one day</strong>.</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #fee2e2; color: #991b1b; text-align: left; width: 50%;">&#10060; Vibes-based testing</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7; color: #166534; text-align: left;">&#9989; Systematic evaluation</th>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; vertical-align: top;">
+      1. Try question A. Looks good.<br>
+      2. Try question B. Looks good.<br>
+      3. Change the system prompt.<br>
+      4. Release it and hope.<br>
+      <strong>Do A and B still work? Nobody knows.</strong>
+    </td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; vertical-align: top;">
+      1. Write a <strong>fixed test set</strong> (questions + expected answers).<br>
+      2. Run every question through the app.<br>
+      3. <strong>Score</strong> every answer automatically.<br>
+      4. Compare the score with the last run.<br>
+      <strong>If anything broke, the score drops and you see it at once.</strong>
+    </td>
+  </tr>
+</table>
+
+<p>This is the same idea as unit tests in normal software. The difference is that an AI answer is rarely one exact string of text, so we need smarter ways to decide if an answer is "correct". Sections 4 to 6 cover them.</p>
+
+<!-- ========== 3. EVAL DATASET ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">3. Step 1: build an eval dataset</h3>
+
+<div style="background-color: #eef6ff; border-left: 6px solid #1d6fd1; padding: 16px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0; font-size: 18px;"><strong>Definition:</strong> An <strong>eval dataset</strong> (also called a <em>test set</em> or <em>golden set</em>) is a fixed list of <strong>prompts</strong>, each paired with the <strong>expected answer</strong> or expected behaviour.</p>
+</div>
+
+<p>This is the dataset used in the lab notebook:</p>
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px;">eval_dataset = [
+    {"prompt": "What is the capital of France?",                  "expected": "Paris"},
+    {"prompt": "What is 12 multiplied by 8?",                     "expected": "96"},
+    {"prompt": "Who wrote the play Romeo and Juliet?",            "expected": "William Shakespeare"},
+    {"prompt": "What is the boiling point of water in Celsius, at sea level?",
+                                                                  "expected": "100 degrees Celsius"},
+    {"prompt": "Name the largest planet in our solar system.",    "expected": "Jupiter"},
+]</pre>
+
+<p><strong>Rules for a good eval dataset:</strong></p>
+<ul>
+  <li><strong>Fixed:</strong> do not change it between runs, or you cannot compare scores.</li>
+  <li><strong>Covers the real job:</strong> for the bakery bot, it should include cake questions, order questions, <em>and</em> attacks the guardrails must block.</li>
+  <li><strong>Includes hard cases,</strong> not only easy ones: tricky wording, edge cases and past failures.</li>
+  <li><strong>Grows over time:</strong> every real failure you find in production becomes a new test case (Section 10).</li>
+</ul>
+
+<!-- ========== 4. THREE SCORING METHODS ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">4. Step 2: choose how to score each answer</h3>
+
+<p>There are three ways to decide whether an answer is correct. Real projects use all three together.</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Method</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">How it works</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Strength</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Weakness</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Use it for</th>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dbeafe;"><strong>&#9312; Reference-based</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Compare the answer with the expected answer, by text match or by meaning (embeddings)</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Fast, cheap, gives the same result every time</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Can mark a correct answer wrong because it is worded differently</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Short facts with one right answer</td>
+  </tr>
+  <tr style="background-color: #f8fafc;">
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #ede9fe;"><strong>&#9313; LLM-as-a-judge</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">A second LLM call grades the answer against a rubric and returns a score</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Understands rewording, tone and partial credit</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Costs an extra API call. The judge can be biased or wrong.</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Open-ended answers, explanations, tone</td>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7;"><strong>&#9314; Human review</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">A person reads the answer and rates it</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Catches what the other two methods miss</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Slow and expensive. Cannot check every run.</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">A small random sample, to check the judge is still trustworthy</td>
+  </tr>
+</table>
+
+<!-- ========== 5. REFERENCE BASED ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">5. Reference-based scoring, with examples</h3>
+
+<div style="border: 2px solid #1d4ed8; border-radius: 10px; margin: 16px 0; overflow: hidden;">
+  <div style="background-color: #1d4ed8; color: #ffffff; padding: 10px 16px;"><strong>5a. Substring match</strong>: "Does the expected text appear inside the answer?"</div>
+  <div style="padding: 12px 16px;">
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; margin-top: 0;">def substring_match(expected, actual):
+    return expected.lower() in actual.lower()</pre>
+    <p style="margin-bottom: 0;">It is <strong>free and instant</strong>, but it only checks the <em>words</em>, not the <em>meaning</em>. The worked example below shows it failing in both directions.</p>
+  </div>
+</div>
+
+<div style="border: 2px solid #1d4ed8; border-radius: 10px; margin: 16px 0; overflow: hidden;">
+  <div style="background-color: #1d4ed8; color: #ffffff; padding: 10px 16px;"><strong>5b. Semantic similarity</strong>: "Do the two answers <em>mean</em> the same thing?"</div>
+  <div style="padding: 12px 16px;">
+    <p style="margin-top: 0;">Turn the expected answer and the actual answer into <strong>embeddings</strong> (the same technique as Day 2 RAG), then compare them with <strong>cosine similarity</strong>. The result is a number: close to <strong>1.0</strong> means very similar meaning, and a lower number means less similar.</p>
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px;">score = cosine_similarity(embed(expected), embed(actual))   # e.g. 0.87</pre>
+    <p style="margin-bottom: 0;">It handles rewording better than substring match. But it has no fixed "correct" line, so <strong>you</strong> must choose a threshold (for example 0.80) and check that the threshold works on your own data.</p>
+  </div>
+</div>
+
+<p><strong>Worked example: the same answers scored by all three automatic methods.</strong> The similarity numbers are <em>illustrative</em>. Your exact numbers will differ, but the pattern will be the same.</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; text-align: center;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Expected</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Model's actual answer</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Truly correct?</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Substring</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Similarity</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Judge (1&ndash;5)</th>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"96"</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"12 &times; 8 = 96."</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Yes</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; True</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">0.85</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">5</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"100 degrees Celsius"</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"Water boils at 100&deg;C at sea level."</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Yes</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fee2e2;">&#10060; False<br><span style="font-size:12px;">wrong: different wording</span></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">0.88</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">5</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"Paris"</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"Many think it is Paris, but the capital is Lyon."</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>No</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fee2e2;">&#10060; True<br><span style="font-size:12px;">wrong: "Paris" appears</span></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fef3c7;">0.72<br><span style="font-size:12px;">unclear</span></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">1</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"Jupiter"</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">"Saturn is the largest planet."</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>No</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; False</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fef3c7;">0.70<br><span style="font-size:12px;">unclear</span></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">1</td>
+  </tr>
+</table>
+<p style="font-size: 14px;">&#9989;/green = the method gave the right verdict &nbsp;|&nbsp; &#10060;/red = the method gave the wrong verdict &nbsp;|&nbsp; yellow = the score is too close to call without a well-tested threshold</p>
+
+<div style="background-color: #eef6ff; border-left: 6px solid #1d6fd1; padding: 14px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0;"><strong>What this table teaches:</strong> substring match can be wrong <em>both ways</em>. Row 2 is a correct answer marked wrong, and row 3 is a wrong answer marked correct. Similarity handles rewording but struggles when a wrong answer uses the same words. The judge reads the <em>meaning</em>, which is why it is used for anything that is not a short fact.</p>
+</div>
+
+<!-- ========== 6. LLM JUDGE ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">6. LLM-as-a-judge</h3>
+
+<div style="border: 2px solid #6d28d9; border-radius: 10px; margin: 16px 0; overflow: hidden;">
+  <div style="background-color: #6d28d9; color: #ffffff; padding: 10px 16px;"><strong>&#9878; How the judge works</strong></div>
+  <div style="padding: 12px 16px;">
+    <table style="width: 100%; border-collapse: separate; border-spacing: 0 6px;">
+      <tr><td style="background-color: #f1f5f9; border: 2px solid #64748b; border-radius: 8px; padding: 10px; text-align: center;"><strong>Inputs:</strong> the question + the expected answer + the model's actual answer</td></tr>
+      <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+      <tr><td style="background-color: #ede9fe; border: 2px solid #6d28d9; border-radius: 8px; padding: 10px; text-align: center;"><strong>Judge LLM + rubric:</strong> "Is the answer factually correct, even if it is worded differently? Score it from 1 (wrong) to 5 (fully correct)."</td></tr>
+      <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+      <tr><td style="background-color: #dcfce7; border: 2px solid #15803d; border-radius: 8px; padding: 10px; text-align: center;"><strong>Structured output (JSON):</strong> <code>{"correct": true, "score_1_to_5": 5, "reasoning": "..."}</code></td></tr>
+    </table>
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; margin-top: 12px;">judge_schema = {
+    "type": "object",
+    "properties": {
+        "correct":      {"type": "boolean"},
+        "score_1_to_5": {"type": "integer"},
+        "reasoning":    {"type": "string"},
+    },
+    "required": ["correct", "score_1_to_5", "reasoning"],
+}
+# response_mime_type="application/json" + response_schema=judge_schema
+# force the judge to return a number your code can add up.</pre>
+    <p style="margin-bottom: 0;"><strong>Why force JSON?</strong> A free-text verdict like "Pretty good, mostly right" cannot be added up. A number in a fixed field can be averaged, compared with a threshold and tracked over time.</p>
+  </div>
+</div>
+
+<p><strong>Three rules for a trustworthy judge:</strong></p>
+<ol>
+  <li><strong>Use a clear rubric:</strong> say exactly what a 1, 3 and 5 mean.</li>
+  <li><strong>Freeze the judge prompt:</strong> give it a version number (for example <code>judge_v1</code>) and do not tweak it casually. If the judge changes, old and new scores cannot be compared.</li>
+  <li><strong>Check the judge against humans:</strong> every so often, have a person grade a small random sample and compare their grades with the judge's.</li>
+</ol>
+
+<!-- ========== 7. AGENT EVAL ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">7. Evaluating an agent: more than the final answer</h3>
+
+<p>An agent (Day 4) makes a <strong>series of decisions</strong>, so it can reach the right answer the wrong way. Check three things for every test case:</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Check</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Question it answers</th>
+  </tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>&#9312; Task success</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Is the final answer correct?</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>&#9313; Tool correctness</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Did it call the right tool when it should have, and <em>no</em> tool when none was needed?</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>&#9314; Efficiency</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">How many steps did it take? Did it stay within <code>max_steps</code>?</td></tr>
+</table>
+
+<p><strong>Worked example:</strong> the goal is <em>"What is 45 multiplied by 12?"</em>. The expected tool is <code>calculate</code>, the expected answer is <strong>540</strong>, and the best possible run takes 1 step.</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; text-align: center;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Agent run</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">&#9312; Answer</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">&#9313; Tool</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">&#9314; Steps</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Verdict</th>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Run A: called <code>calculate(45, 12, "multiply")</code> once and answered 540</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; 540</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; calculate</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; 1</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong style="color:#15803d;">PASS</strong></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Run B: answered "530" from memory, no tool</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fee2e2;">&#10060; 530</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fee2e2;">&#10060; none</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">0</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong style="color:#b91c1c;">FAIL</strong></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Run C: called <code>calculate</code> 4 times (repeating itself) and answered 540</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; 540</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #dcfce7;">&#9989; calculate</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1; background-color: #fee2e2;">&#10060; 4</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong style="color:#b45309;">CORRECT BUT INEFFICIENT</strong><br><span style="font-size:12px;">4&times; the cost and time</span></td>
+  </tr>
+</table>
+<p>A test that checked only the final answer would give Run C a full pass. An agent eval flags it.</p>
+
+<!-- ========== 8. PASS RATE & REGRESSION ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">8. Step 3: pass rate and regression testing</h3>
+
+<div style="background-color: #eef6ff; border-left: 6px solid #1d6fd1; padding: 16px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0 0 6px 0;"><strong>Pass rate</strong> = (number of cases with score &ge; threshold) &divide; (total cases)</p>
+  <p style="margin: 0;"><strong>Regression</strong> = something that used to work stops working after a change. A <strong>drop in pass rate</strong> is how you detect it.</p>
+</div>
+
+<p><strong>Worked example:</strong> the threshold is 4 out of 5, and there are 5 test cases. We changed the system prompt from v1 to v2 and ran the <em>same</em> eval set again. Each bar shows the judge score out of 5.</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; width: 26%;">Test case</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Prompt v1: judge score</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Prompt v2: judge score</th>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;">Capital of France</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;">12 &times; 8</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #dc2626; color: #fff; width: 40%; padding: 2px 6px;">2 FAIL</div></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;">Romeo and Juliet</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 80%; padding: 2px 6px;">4 PASS</div></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;">Boiling point</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 80%; padding: 2px 6px;">4 PASS</div></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #dc2626; color: #fff; width: 60%; padding: 2px 6px;">3 FAIL</div></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;">Largest planet</td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><div style="background-color: #16a34a; color: #fff; width: 100%; padding: 2px 6px;">5 PASS</div></td>
+  </tr>
+  <tr style="background-color: #f1f5f9;">
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Pass rate</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong style="color:#15803d;">5 / 5 = 100%</strong></td>
+    <td style="padding: 8px; border: 1px solid #cbd5e1;"><strong style="color:#b91c1c;">3 / 5 = 60% &#9660; REGRESSION</strong></td>
+  </tr>
+</table>
+
+<p><strong>Decision:</strong> do <strong>not</strong> release v2. Look at the two failed cases, fix the prompt, and run the suite again. Only release when the pass rate is at least as good as v1.</p>
+
+<div style="background-color: #fff7ed; border-left: 6px solid #ea580c; padding: 14px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0;"><strong>&#9888; When to re-run the eval suite:</strong> after <strong>every</strong> change to the system prompt, the model or model version, a guardrail, a tool, or retrieval settings (RAG). If you skip one run, you can no longer tell which change caused a drop.</p>
+</div>
+
+<!-- ======================================================= -->
+<!-- ================ PART B: OBSERVABILITY ================ -->
+<!-- ======================================================= -->
+<div style="background-color: #15803d; color: #ffffff; padding: 12px 18px; border-radius: 8px; margin: 32px 0 8px 0;">
+  <p style="margin: 0; font-size: 20px;"><strong>PART B &middot; &#128301; OBSERVABILITY</strong> (after release)</p>
+</div>
+
+<!-- ========== 9. OBSERVABILITY ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">9. What is observability?</h3>
+
+<div style="background-color: #f0fdf4; border-left: 6px solid #15803d; padding: 16px 20px; margin: 16px 0; border-radius: 6px;">
+  <p style="margin: 0; font-size: 18px;"><strong>Definition:</strong> <strong>Observability</strong> means recording enough about every real request that you can answer <strong>"what happened, and why?"</strong> later, without having to reproduce the problem.</p>
+</div>
+
+<p>It is built from three kinds of data. Together they are sometimes called the <strong>three pillars</strong>:</p>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Pillar</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">What it is</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Question it answers</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Bakery bot example</th>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7;"><strong>&#128221; Logs</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">A record of one event</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">"What happened?"</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;"><code>BLOCKED | input_rule | prompt injection</code></td>
+  </tr>
+  <tr style="background-color: #f8fafc;">
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7;"><strong>&#129517; Traces</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Every step of <strong>one request</strong>, with its timing, linked by a shared <code>trace_id</code></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">"Where did this request spend its time, and which step went wrong?"</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Input check &rarr; scope check &rarr; Gemini &rarr; redaction &rarr; judge (see the diagram below)</td>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7;"><strong>&#128200; Metrics</strong></td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Numbers added up across <strong>many requests</strong> over time</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">"Is the system healthy overall?"</td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1;">Requests per day, average cost, block rate, p95 latency</td>
+  </tr>
+</table>
+
+<!-- TRACE WATERFALL -->
+<p><strong>Visual: a trace for one bakery request</strong> (the Section 7 pipeline from the Guardrails session). The length of each bar shows how long that step took. The timings are an <em>example</em>.</p>
+
+<div style="border: 2px solid #15803d; border-radius: 10px; padding: 14px; margin: 12px 0; background-color: #f8fafc;">
+  <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>trace_id:</strong> <code>7f3a-91c2</code> &nbsp;|&nbsp; <strong>user message:</strong> "Do you have eggless cakes?" &nbsp;|&nbsp; <strong>total:</strong> 1,752 ms &nbsp;|&nbsp; <strong>result:</strong> <span style="color:#15803d;"><strong>PASSED</strong></span></p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <tr>
+      <td style="width: 30%; padding: 4px 6px; border-bottom: 1px solid #e2e8f0;">1. Input rule filter</td>
+      <td style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;"><div style="background-color: #1d4ed8; width: 1%; height: 14px;"></div></td>
+      <td style="width: 70px; padding: 4px 6px; text-align: right; border-bottom: 1px solid #e2e8f0;">1 ms</td>
+    </tr>
+    <tr>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0;">2. Scope check (LLM)</td>
+      <td style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;"><div style="background-color: #1d4ed8; width: 24%; height: 14px;"></div></td>
+      <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #e2e8f0;">420 ms</td>
+    </tr>
+    <tr>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0;">3. Gemini main call</td>
+      <td style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;"><div style="background-color: #6d28d9; width: 54%; height: 14px; margin-left: 24%;"></div></td>
+      <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #e2e8f0;">950 ms</td>
+    </tr>
+    <tr>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0;">4. PII redaction</td>
+      <td style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;"><div style="background-color: #15803d; width: 1%; height: 14px; margin-left: 78%;"></div></td>
+      <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #e2e8f0;">1 ms</td>
+    </tr>
+    <tr>
+      <td style="padding: 4px 6px;">5. Moderation judge (LLM)</td>
+      <td style="padding: 4px 0;"><div style="background-color: #15803d; width: 21%; height: 14px; margin-left: 78%;"></div></td>
+      <td style="padding: 4px 6px; text-align: right;">380 ms</td>
+    </tr>
+  </table>
+  <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>Reading the trace:</strong> the two regex steps take almost no time. The three LLM calls take <strong>99.9%</strong> of the total. If users say the bot is slow, start with the LLM calls, not the regex.</p>
+</div>
+
+<!-- WHAT TO LOG -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">10. What to record for every request, and what never to record</h3>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7; color: #166534; text-align: left; width: 50%;">&#9989; Record this</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #fee2e2; color: #991b1b; text-align: left;">&#10060; Never record this</th>
+  </tr>
+  <tr>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; vertical-align: top;">
+      <ul style="margin: 0; padding-left: 18px;">
+        <li><code>trace_id</code> and a timestamp</li>
+        <li>Model name and version, and prompt version (for example <code>prompt_v2</code>)</li>
+        <li>Input and output <strong>after redaction</strong></li>
+        <li>Token counts: input and output</li>
+        <li>Latency of each step and in total</li>
+        <li>Estimated cost</li>
+        <li>Each guardrail decision <strong>and the reason for it</strong></li>
+        <li>Errors and retries</li>
+        <li>User feedback (&#128077; / &#128078;), if you collect it</li>
+      </ul>
+    </td>
+    <td style="padding: 10px; border: 1px solid #cbd5e1; vertical-align: top;">
+      <ul style="margin: 0; padding-left: 18px;">
+        <li>API keys or passwords</li>
+        <li>Full card numbers, bank details or government ID numbers</li>
+        <li>Raw emails or phone numbers (redact them first)</li>
+        <li>Anything your privacy policy or local law does not allow you to keep</li>
+      </ul>
+      <p style="margin: 10px 0 0 0;"><strong>Rule:</strong> run the <strong>same PII redaction</strong> you use as an output guardrail on the text <em>before</em> you log it. Logs are often kept for months and read by many people.</p>
+    </td>
+  </tr>
+</table>
+
+<p><strong>Code: a minimal trace logger.</strong> This builds on <code>guarded_chat()</code> from the Guardrails session. Gemini returns token counts in <code>response.usage_metadata</code>.</p>
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px;">import json, time, uuid
+
+def log_safe(text):
+    text = redact_pii(text)                          # emails, phones
+    return CREDIT_CARD_RE.sub("[redacted-card]", text)  # card numbers
+
+def traced_model_call(user_text, prompt_version="bakery_v1"):
+    trace_id = str(uuid.uuid4())
+    start = time.perf_counter()
+
+    response = client.models.generate_content(
+        model=MODEL, contents=user_text,
+        config=types.GenerateContentConfig(system_instruction=bakery_system_instruction),
+    )
+
+    usage = response.usage_metadata
+    record = {
+        "trace_id": trace_id,
+        "model": MODEL,
+        "prompt_version": prompt_version,
+        "input": log_safe(user_text),
+        "output": log_safe(response.text),
+        "input_tokens": usage.prompt_token_count,
+        "output_tokens": usage.candidates_token_count,
+        "latency_ms": round((time.perf_counter() - start) * 1000),
+    }
+    print(json.dumps(record))   # in production: send to a log store, not print
+    return response.text</pre>
+
+<!-- METRICS DASHBOARD -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">11. Metrics: the dashboard you watch every day</h3>
+
+<p>An <strong>example</strong> dashboard for the bakery bot (one day of traffic):</p>
+
+<table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin: 8px 0;">
+  <tr>
+    <td style="width: 33%; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #475569;">Requests today</span><br><span style="font-size: 26px;"><strong>10,000</strong></span>
+    </td>
+    <td style="width: 33%; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #475569;">p95 latency</span><br><span style="font-size: 26px;"><strong>2.4 s</strong></span>
+    </td>
+    <td style="width: 33%; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #475569;">Cost today</span><br><span style="font-size: 26px;"><strong>$0.85</strong></span>
+    </td>
+  </tr>
+  <tr>
+    <td style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #475569;">Error rate</span><br><span style="font-size: 26px;"><strong>0.4%</strong></span>
+    </td>
+    <td style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #92400e;">Guardrail block rate</span><br><span style="font-size: 26px;"><strong>9%</strong></span><br><span style="font-size: 12px; color: #92400e;">&#9650; up from 3% yesterday</span>
+    </td>
+    <td style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+      <span style="font-size: 13px; color: #475569;">&#128077; rate</span><br><span style="font-size: 26px;"><strong>87%</strong></span>
+    </td>
+  </tr>
+</table>
+
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Metric</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Exact meaning</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">If it suddenly goes up, check&hellip;</th>
+  </tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>p95 latency</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">95% of requests finished in this time or less. The slowest 5% took longer.</td><td style="padding: 8px; border: 1px solid #cbd5e1;">Slow model provider, long prompts, too many LLM calls in the pipeline</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Cost</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Tokens used &times; the provider's price per token</td><td style="padding: 8px; border: 1px solid #cbd5e1;">A longer system prompt, a looping agent, abuse by one user</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Error rate</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">% of requests that crashed or got an API error</td><td style="padding: 8px; border: 1px solid #cbd5e1;">An expired API key, rate limits, a code bug</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Guardrail block rate</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">% of requests stopped by any guardrail</td><td style="padding: 8px; border: 1px solid #cbd5e1;">An attack in progress, <em>or</em> a new rule causing false positives. Read the logged reasons to tell which.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>&#128077; rate</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">% of rated replies that users marked helpful</td><td style="padding: 8px; border: 1px solid #cbd5e1;">A drop is a quality regression that your eval set did not catch</td></tr>
+</table>
+
+<p><strong>Worked cost example.</strong> The prices below are <em>made-up example rates</em>. Always check your provider's current pricing page.<br>
+Assume <strong>$0.10</strong> per 1 million input tokens and <strong>$0.40</strong> per 1 million output tokens.</p>
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; text-align: center;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">LLM call in one request</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Input tokens</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1;">Output tokens</th>
+  </tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Scope check</td><td style="padding: 8px; border: 1px solid #cbd5e1;">120</td><td style="padding: 8px; border: 1px solid #cbd5e1;">1</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Main Gemini call</td><td style="padding: 8px; border: 1px solid #cbd5e1;">150</td><td style="padding: 8px; border: 1px solid #cbd5e1;">80</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Moderation judge</td><td style="padding: 8px; border: 1px solid #cbd5e1;">250</td><td style="padding: 8px; border: 1px solid #cbd5e1;">1</td></tr>
+  <tr style="background-color: #f1f5f9;"><td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;"><strong>Total</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>520</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>82</strong></td></tr>
+</table>
+<pre style="background-color: #111827; color: #e5e7eb; padding: 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px;">Cost per request = 520 &times; $0.10/1,000,000  +  82 &times; $0.40/1,000,000
+                 = $0.0000520 + $0.0000328
+                 = $0.0000848
+
+Cost per day     = $0.0000848 &times; 10,000 requests = $0.85
+
+Main call alone  = 150 &times; $0.10/1M + 80 &times; $0.40/1M = $0.0000470 per request
+&rarr; The two guardrail LLM calls make each request about 1.8&times; as expensive.</pre>
+<p>This is why you measure: guardrails and judges make the app safer, but they are not free, and without metrics you cannot see the trade-off.</p>
+
+<!-- ALERTS -->
+<p><strong>Alerts</strong> are rules that notify a person automatically when a metric crosses a limit. Examples:</p>
+<ul>
+  <li>Error rate &gt; 2% for 10 minutes &rarr; message the on-call developer.</li>
+  <li>Cost today &gt; 3&times; the normal daily cost &rarr; email the owner (a possible loop or abuse).</li>
+  <li>Guardrail block rate doubles compared with yesterday &rarr; review the logged block reasons.</li>
+</ul>
+
+<!-- ========== 12. THE LOOP ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">12. The improvement loop: how evaluation and observability work together</h3>
+
+<table style="width: 100%; border-collapse: separate; border-spacing: 0 6px; margin: 12px 0;">
+  <tr><td style="background-color: #dbeafe; border: 2px solid #1d4ed8; border-radius: 8px; padding: 10px; text-align: center;"><strong>&#9312; Run the eval suite</strong>. Pass rate at least as good as the last release? Then release.</td></tr>
+  <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+  <tr><td style="background-color: #dcfce7; border: 2px solid #15803d; border-radius: 8px; padding: 10px; text-align: center;"><strong>&#9313; Observe production</strong>: logs, traces, metrics, &#128077;/&#128078;</td></tr>
+  <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+  <tr><td style="background-color: #fef3c7; border: 2px solid #d97706; border-radius: 8px; padding: 10px; text-align: center;"><strong>&#9314; Find a failure</strong>. Example: users ask "Is the cake Jain-friendly?" and the scope check wrongly blocks it.</td></tr>
+  <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+  <tr><td style="background-color: #ede9fe; border: 2px solid #6d28d9; border-radius: 8px; padding: 10px; text-align: center;"><strong>&#9315; Add it to the eval dataset</strong> as a new test case, with the expected behaviour "allowed and answered"</td></tr>
+  <tr><td style="text-align: center; font-size: 22px; color: #64748b;">&darr;</td></tr>
+  <tr><td style="background-color: #fee2e2; border: 2px solid #b91c1c; border-radius: 8px; padding: 10px; text-align: center;"><strong>&#9316; Fix it</strong> (update the scope-check prompt), then go back to <strong>&#9312;</strong> &#8634;</td></tr>
+</table>
+
+<p>Each time round the loop, the eval set grows with real failures, so the same bug cannot come back unnoticed.</p>
+
+<!-- ========== 13. GLOSSARY ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">13. Key terms (exact meanings)</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; width: 28%;">Term</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Meaning in this course</th>
+  </tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Evaluation (eval)</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Scoring the app's answers on a fixed test set, before a release.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Eval dataset</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">A fixed list of prompts, each with its expected answer or behaviour.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Reference-based scoring</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Comparing an answer with a known correct answer, by substring match or semantic similarity.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>LLM-as-a-judge</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">A separate LLM call that grades an answer against a rubric and returns a structured score.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Threshold</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">The minimum score that counts as a pass. Example: a judge score of 4 or more out of 5.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Pass rate</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Cases that passed &divide; total cases, shown as a percentage.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Regression</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Something that used to work stops working after a change.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Observability</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Recording enough about real requests to explain what happened and why, after the fact.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Log</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">A record of a single event.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Trace</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">All the steps of one request, linked by a shared <code>trace_id</code>, with the timing of each step.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Metric</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">A number added up across many requests over time. Examples: cost per day, error rate.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>p95 latency</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">The time within which 95% of requests finish.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Judge bias</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">A judge's scoring tilted by something other than correctness. Example: a model rating its own writing style too highly.</td></tr>
+  <tr style="background-color: #f8fafc;"><td style="padding: 10px; border: 1px solid #cbd5e1;"><strong>Eval leakage</strong></td><td style="padding: 10px; border: 1px solid #cbd5e1;">Test questions ending up in the prompt or training data, so the app "memorises the exam".</td></tr>
+</table>
+
+<!-- ========== 14. MYTHS ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">14. Common misunderstandings</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+  <tr>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #fee2e2; color: #991b1b; text-align: left; width: 45%;">&#10060; Myth</th>
+    <th style="padding: 10px; border: 1px solid #cbd5e1; background-color: #dcfce7; color: #166534; text-align: left;">&#9989; Fact</th>
+  </tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"I tried 5 questions and they all worked, so it's tested."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">That tests one version on one day. Without a fixed eval set that you re-run, you cannot detect regressions.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"Substring match is good enough."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">It marks correct answers wrong when they are reworded, and wrong answers correct when they contain the keyword (Section 5).</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"The LLM judge is always right."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">A judge is an LLM and can be biased or wrong. Freeze its prompt and check it against human grades.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"If the agent's final answer is right, the agent is fine."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">It may have used the wrong tool or taken 4&times; more steps than needed (Section 7).</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"We passed evaluation, so we don't need monitoring."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">Real users ask things you never tested. Only observability shows you those cases.</td></tr>
+  <tr><td style="padding: 10px; border: 1px solid #cbd5e1;">"Log everything, including the raw user text."</td><td style="padding: 10px; border: 1px solid #cbd5e1;">Redact PII before logging, and never log keys, passwords or card numbers.</td></tr>
+</table>
+
+<!-- ========== 15. CHEAT SHEET ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">15. Cheat sheet</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;"></th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">&#129514; Evaluation</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">&#128301; Observability</th>
+  </tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>When</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Before release, after every change</td><td style="padding: 8px; border: 1px solid #cbd5e1;">After release, all the time</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Data</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">A fixed test set you wrote</td><td style="padding: 8px; border: 1px solid #cbd5e1;">Real user traffic</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Main tools</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Substring, similarity, LLM judge, human review</td><td style="padding: 8px; border: 1px solid #cbd5e1;">Logs, traces, metrics, alerts</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Key number</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Pass rate</td><td style="padding: 8px; border: 1px solid #cbd5e1;">p95 latency, cost, error rate, block rate, &#128077; rate</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Catches</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Regressions in the cases you thought of</td><td style="padding: 8px; border: 1px solid #cbd5e1;">Problems you did not think of</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Example tools</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">promptfoo, DeepEval, OpenAI Evals</td><td style="padding: 8px; border: 1px solid #cbd5e1;">Langfuse, LangSmith, Arize Phoenix, OpenTelemetry</td></tr>
+</table>
+
+<!-- ========== 16. QUIZ ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">16. &#129504; Check your understanding</h3>
+<p>Answers are at the bottom of the page.</p>
+<ol>
+  <li>You want to know whether your bot is slow for real users <em>today</em>. Is that an <strong>evaluation</strong> question or an <strong>observability</strong> question?</li>
+  <li>Expected answer: <em>"Jupiter"</em>. Actual answer: <em>"The largest planet is Jupiter."</em> What does <code>substring_match</code> return?</li>
+  <li>Expected answer: <em>"William Shakespeare"</em>. Actual answer: <em>"It was written by Shakespeare."</em> What does <code>substring_match</code> return, and is the answer actually correct?</li>
+  <li>The threshold is 4 out of 5. Judge scores for 10 cases: 5, 5, 4, 3, 5, 4, 2, 5, 4, 5. What is the pass rate?</li>
+  <li>Last week's pass rate was 90%. After switching to a new model version it is 70%, on the same eval set and the same judge. What is this called, and should you release?</li>
+  <li>An agent answers "What is 20 + 22?" correctly with 42, but calls the <code>calculate</code> tool 3 times. Which agent check fails?</li>
+  <li>Your guardrail block rate jumps from 3% to 15% just after you add a new blocklist phrase. Name the <strong>two</strong> possible causes, and say where you look to tell them apart.</li>
+  <li><strong>True or False:</strong> it is fine to log the user's message exactly as typed, because logs are private.</li>
+</ol>
+
+<!-- ========== 17. LAB ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">17. &#128187; Hands-on lab</h3>
+<div style="background-color: #f5f3ff; border: 2px solid #6d28d9; border-radius: 10px; padding: 16px 20px;">
+  <p style="margin-top: 0;"><strong>Notebook:</strong> <code>Day 5 &middot; Memory, Guardrails &amp; Evaluation / Learning / 3-Evaluating_LLM_Outputs.ipynb</code></p>
+  <p><strong>Part A: Evaluation</strong> (in the notebook)</p>
+  <ol>
+    <li>Run Sections 4 and 5. Compare <code>substring_score</code> with <code>semantic_score</code> for every case.</li>
+    <li>Run Section 6 (LLM-as-a-judge). Find any case where substring match and the judge <strong>disagree</strong>.</li>
+    <li>Run Section 7 (agent eval). Record the steps and tools used for each goal.</li>
+    <li>Run Sections 8 and 9. Write down the pass rate. This is your <strong>baseline</strong>.</li>
+    <li><strong>Regression task:</strong> add a system instruction to <code>run_model</code>, for example <em>"Answer in exactly one word."</em> Re-run <code>run_eval_suite()</code>. Did the pass rate change? Which cases changed, and why?</li>
+    <li><strong>Classroom challenge (Section 11 of the notebook):</strong> add one easy case and one tricky case, and fill in the comparison table.</li>
+  </ol>
+  <p><strong>Part B: Observability</strong> (new code cell at the end of the notebook)</p>
+  <ol>
+    <li>Paste <code>traced_model_call()</code> from Section 10 of this page. Also copy <code>MODEL</code>, <code>bakery_system_instruction</code>, <code>redact_pii</code> and <code>CREDIT_CARD_RE</code> from the Guardrails notebook. The eval notebook names its model <code>CHAT_MODEL</code>, so either set <code>MODEL = CHAT_MODEL</code> or copy <code>MODEL</code> across.</li>
+    <li>Call it with 3 different questions and read the JSON records it prints.</li>
+    <li>Using the example rates from Section 11, calculate the cost of each call from its token counts.</li>
+    <li>Send one message that contains an email address, and confirm that the logged <code>input</code> shows <code>[redacted-email]</code>.</li>
+  </ol>
+  <p style="margin-bottom: 0;"><strong>&#128273; Reminder:</strong> never paste your API key into Moodle, GitHub, WhatsApp or a screenshot.</p>
+</div>
+
+<!-- ========== 18. TAKEAWAYS ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">18. &#127891; Key takeaways</h3>
+<div style="background-color: #0f3d6e; color: #ffffff; padding: 16px 20px; border-radius: 10px;">
+  <ol style="margin: 0; padding-left: 20px;">
+    <li><strong>Evaluation</strong> answers "Is it good enough to release?" <strong>Observability</strong> answers "What is it doing for real users?" You need both.</li>
+    <li>An eval is a <strong>fixed dataset + a scoring method + a threshold</strong>, re-run after every change.</li>
+    <li>Use <strong>reference-based</strong> scoring for short facts, an <strong>LLM judge</strong> for open-ended answers, and <strong>human review</strong> to check the judge.</li>
+    <li>Evaluate agents on <strong>answer, tools and steps</strong>, not just the final answer.</li>
+    <li>A <strong>drop in pass rate is a regression</strong>. Do not release until it is fixed.</li>
+    <li>In production, record <strong>logs, traces and metrics</strong>, always <strong>after redacting PII</strong>, and turn every real failure into a new eval case.</li>
+  </ol>
+</div>
+
+<!-- ========== REFERENCES ========== -->
+<h3 style="color: #0f3d6e; border-bottom: 2px solid #0f3d6e; padding-bottom: 4px;">&#128218; Further reading</h3>
+<ul>
+  <li><a href="https://ai.google.dev/gemini-api/docs/structured-output" target="_blank" rel="noopener">Gemini API: Structured output</a></li>
+  <li><a href="https://ai.google.dev/gemini-api/docs/embeddings" target="_blank" rel="noopener">Gemini API: Embeddings</a></li>
+  <li><a href="https://crfm.stanford.edu/helm/" target="_blank" rel="noopener">Stanford HELM: Holistic Evaluation of Language Models</a></li>
+  <li><a href="https://www.promptfoo.dev/" target="_blank" rel="noopener">promptfoo: open-source LLM eval and regression testing</a></li>
+  <li><a href="https://github.com/openai/evals" target="_blank" rel="noopener">OpenAI Evals framework</a></li>
+  <li><a href="https://opentelemetry.io/" target="_blank" rel="noopener">OpenTelemetry: the open standard for traces, metrics and logs</a></li>
+  <li><a href="https://langfuse.com/docs" target="_blank" rel="noopener">Langfuse: open-source LLM observability</a></li>
+</ul>
+
+<!-- ========== ANSWER KEY ========== -->
+<hr style="margin: 32px 0 16px 0; border: 0; border-top: 2px dashed #cbd5e1;">
+<h3 style="color: #0f3d6e;">&#128273; Answer key (try the questions first!)</h3>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+  <tr style="background-color: #0f3d6e; color: #ffffff;">
+    <th style="padding: 8px; border: 1px solid #cbd5e1; width: 6%;">Q</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; width: 30%;">Answer</th>
+    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Why</th>
+  </tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">1</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Observability</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">It is about real users in production right now. You answer it with the p95 latency metric and traces, not with a test set.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">2</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>True</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">"jupiter" appears inside "the largest planet is jupiter." once both are lower-cased.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">3</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>False</strong>, but the answer <strong>is</strong> correct</td><td style="padding: 8px; border: 1px solid #cbd5e1;">The full string "william shakespeare" does not appear, so substring match marks a correct answer wrong. An LLM judge would score it 4 or 5.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">4</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>8 / 10 = 80%</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Scores of 4 or more: 5, 5, 4, 5, 4, 5, 4, 5 = 8 cases. The two failures are the 3 and the 2.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">5</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>A regression. Do not release.</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">The same eval set and the same judge give a lower pass rate, so the model change broke something. Look at the newly failing cases first.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">6</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>Efficiency (steps)</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">The answer and the tool choice are correct, but it used 3 steps when 1 was enough.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">7</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>(a) An attack, or (b) false positives from the new phrase</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Read the <strong>logged block reasons</strong> and the redacted messages. If most blocks name the new phrase and the messages are normal bakery questions, the new rule is causing false positives.</td></tr>
+  <tr><td style="padding: 8px; border: 1px solid #cbd5e1; text-align:center;">8</td><td style="padding: 8px; border: 1px solid #cbd5e1;"><strong>False</strong></td><td style="padding: 8px; border: 1px solid #cbd5e1;">Logs are kept for a long time and read by many people and tools. Always redact PII before logging.</td></tr>
+</table>
+
+</div>
+<!-- ===================== PASTE END ===================== -->

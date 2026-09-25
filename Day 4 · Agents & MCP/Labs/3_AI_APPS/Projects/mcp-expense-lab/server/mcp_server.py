@@ -1,4 +1,4 @@
-﻿"""Standalone Smart Expense Tracker MCP server over streamable HTTP."""
+"""Standalone Smart Expense Tracker MCP server over streamable HTTP."""
 from __future__ import annotations
 
 import ast
@@ -6,6 +6,7 @@ import json
 import logging
 import operator
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -17,8 +18,12 @@ from src.env_setup import ensure_env_file  # noqa: E402
 
 ensure_env_file()
 from dotenv import load_dotenv  # noqa: E402
-load_dotenv()
-from mcp.server import MCPServer  # noqa: E402
+
+load_dotenv(PROJECT_DIR / ".env")
+try:
+    from mcp.server import MCPServer  # noqa: E402  (mcp >= 2.0; on mcp 1.x this class was called FastMCP)
+except ImportError:
+    sys.exit('This lab needs mcp 2.x. Fix it with:  pip install -U "mcp>=2.0"')
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("mcp_expense_lab")
@@ -26,8 +31,6 @@ HOST = os.getenv("MCP_SERVER_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_SERVER_PORT", "8766"))
 PATH = "/mcp"
 
-# NOTE: mcp >= 2.0 renamed FastMCP to MCPServer. With mcp 1.x use
-# `from mcp.server.fastmcp import FastMCP` and replace MCPServer below.
 mcp = MCPServer("ExpenseLabServer", instructions=(
     "You manage an in-memory Smart Expense Tracker. Use the expense tools for every "
     "calculation or lookup instead of guessing numbers. Amounts default to INR. "
@@ -45,19 +48,38 @@ EXPENSES: list[dict[str, Any]] = [
     {"id": 5, "date": "2026-09-22", "category": "entertainment", "description": "Cinema tickets", "amount": 720.0, "currency": "INR"},
 ]
 
+
 def _record_call(name: str, **details: Any) -> None:
     logger.info("tool=%s args=%s", name, details)
 
+
 def _error(message: str) -> dict[str, str]:
     return {"error": message}
+
 
 def _category(value: str) -> str | None:
     normalized = str(value).strip().lower()
     return normalized if normalized in ALLOWED_CATEGORIES else None
 
+
+def _month(value: str | None) -> str | None:
+    """Return a clean YYYY-MM string, None when not given, or raise ValueError when malformed."""
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", cleaned):
+        raise ValueError("Month must use YYYY-MM format, for example 2026-09.")
+    return cleaned
+
+
+def _select(category: str, month: str | None) -> list[dict[str, Any]]:
+    return [item for item in EXPENSES
+            if (category == "all" or item["category"] == category) and (not month or item["date"].startswith(month))]
+
+
 @mcp.tool()
 def add_expense(amount: float, category: str, description: str, date: str | None = None) -> dict[str, Any]:
-    """Add an expense in INR with a positive amount, allowed category, description, and optional YYYY-MM-DD date."""
+    """Add ONE expense in INR (positive amount, allowed category, description, optional YYYY-MM-DD date); call once per expense."""
     _record_call("add_expense", amount=amount, category=category, description=description, date=date)
     try:
         amount = float(amount)
@@ -79,10 +101,11 @@ def add_expense(amount: float, category: str, description: str, date: str | None
     EXPENSES.append(record)
     return record
 
+
 @mcp.tool()
-def list_expenses(category: str = "all", limit: int = 20) -> list[dict[str, Any]] | dict[str, str]:
-    """List expenses newest first, optionally filtered by category and limited to a number of records."""
-    _record_call("list_expenses", category=category, limit=limit)
+def list_expenses(category: str = "all", limit: int = 20, month: str | None = None) -> list[dict[str, Any]] | dict[str, str]:
+    """List expenses newest first, optionally filtered by category and by month (YYYY-MM), limited to a number of records."""
+    _record_call("list_expenses", category=category, limit=limit, month=month)
     normalized = str(category).strip().lower()
     if normalized != "all" and normalized not in ALLOWED_CATEGORIES:
         return _error(f"Category must be 'all' or one of: {', '.join(ALLOWED_CATEGORIES)}.")
@@ -90,8 +113,13 @@ def list_expenses(category: str = "all", limit: int = 20) -> list[dict[str, Any]
         count = max(1, min(int(limit), 100))
     except (TypeError, ValueError):
         return _error("Limit must be a positive integer.")
-    matches = [item for item in EXPENSES if normalized == "all" or item["category"] == normalized]
+    try:
+        wanted_month = _month(month)
+    except ValueError as exc:
+        return _error(str(exc))
+    matches = _select(normalized, wanted_month)
     return sorted(matches, key=lambda item: (item["date"], item["id"]), reverse=True)[:count]
+
 
 @mcp.tool()
 def delete_expense(expense_id: int) -> str:
@@ -104,22 +132,28 @@ def delete_expense(expense_id: int) -> str:
     for index, expense in enumerate(EXPENSES):
         if expense["id"] == target:
             removed = EXPENSES.pop(index)
-            return f"Deleted expense {target}: {removed['description']} (₹{removed['amount']:.2f})."
+            return f"Deleted expense {target}: {removed['description']} (INR {removed['amount']:.2f})."
     return f"No expense found with id {target}; nothing was deleted."
 
+
 @mcp.tool()
-def get_spending_summary(category: str = "all") -> dict[str, Any]:
-    """Summarize total, count, average, and per-category spending, optionally for one category."""
-    _record_call("get_spending_summary", category=category)
+def get_spending_summary(category: str = "all", month: str | None = None) -> dict[str, Any]:
+    """Get total, count, average and per-category spending; use this for ANY total, optionally for one category and/or one month (YYYY-MM)."""
+    _record_call("get_spending_summary", category=category, month=month)
     normalized = str(category).strip().lower()
     if normalized != "all" and normalized not in ALLOWED_CATEGORIES:
         return _error(f"Category must be 'all' or one of: {', '.join(ALLOWED_CATEGORIES)}.")
-    matches = [item for item in EXPENSES if normalized == "all" or item["category"] == normalized]
+    try:
+        wanted_month = _month(month)
+    except ValueError as exc:
+        return _error(str(exc))
+    matches = _select(normalized, wanted_month)
     total = round(sum(item["amount"] for item in matches), 2)
     breakdown = {name: round(sum(item["amount"] for item in matches if item["category"] == name), 2)
                  for name in ALLOWED_CATEGORIES if any(item["category"] == name for item in matches)}
-    return {"category": normalized, "currency": "INR", "total": total, "count": len(matches),
-            "average": round(total / len(matches), 2) if matches else 0.0, "per_category": breakdown}
+    return {"category": normalized, "month": wanted_month or "all", "currency": "INR", "total": total,
+            "count": len(matches), "average": round(total / len(matches), 2) if matches else 0.0, "per_category": breakdown}
+
 
 @mcp.tool()
 def convert_currency(amount: float, from_currency: str, to_currency: str) -> dict[str, Any]:
@@ -137,9 +171,11 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> dic
             "converted_amount": round(converted, 2), "rate_type": "static demo rates",
             "note": "This conversion uses fixed static demo rates, not live exchange rates."}
 
+
 _SAFE_OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
              ast.Div: operator.truediv, ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
              ast.Pow: operator.pow, ast.USub: operator.neg, ast.UAdd: operator.pos}
+
 
 def _safe_eval(node: ast.AST) -> float | int:
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
@@ -149,6 +185,7 @@ def _safe_eval(node: ast.AST) -> float | int:
     if isinstance(node, ast.UnaryOp) and type(node.op) in _SAFE_OPS:
         return _SAFE_OPS[type(node.op)](_safe_eval(node.operand))
     raise ValueError("Only numbers, + - * / // % **, unary signs, and parentheses are allowed.")
+
 
 @mcp.tool()
 def calculate(expression: str) -> dict[str, Any]:
@@ -162,6 +199,7 @@ def calculate(expression: str) -> dict[str, Any]:
     except Exception as exc:
         return _error(f"Could not evaluate expression safely: {exc}")
 
+
 @mcp.tool()
 def get_current_date() -> dict[str, str]:
     """Return today's local date, weekday, and ISO timestamp."""
@@ -169,23 +207,26 @@ def get_current_date() -> dict[str, str]:
     now = datetime.now().astimezone()
     return {"date": now.date().isoformat(), "weekday": now.strftime("%A"), "iso_timestamp": now.isoformat()}
 
+
 @mcp.resource("expenses://all")
 def all_expenses_resource() -> str:
     """Return a JSON snapshot of every expense in the in-memory book."""
     _record_call("resource:expenses://all")
     return json.dumps(EXPENSES, ensure_ascii=False, indent=2)
 
+
 @mcp.prompt()
 def monthly_report(month: str) -> str:
     """Ask the model to call get_spending_summary and list_expenses before writing a short monthly report."""
     _record_call("prompt:monthly_report", month=month)
-    return (f"Prepare a short, useful expense report for {month}. First call get_spending_summary "
-            f"and list_expenses yourself for the relevant month, then summarize total spending, "
-            "the category breakdown, and two practical observations. Do not invent figures.")
+    return (f"Prepare a short, useful expense report for {month} (use the YYYY-MM form for the month argument). "
+            "First call get_spending_summary and list_expenses yourself for that month, then summarize total "
+            "spending, the category breakdown, and two practical observations. Do not invent figures.")
+
 
 if __name__ == "__main__":
     print("=" * 72)
-    print("  MCP EXPENSE LAB — Smart Expense Tracker server starting")
+    print("  MCP EXPENSE LAB - Smart Expense Tracker server starting")
     print("  Transport : streamable-http")
     print(f"  Endpoint  : http://{HOST}:{PORT}{PATH}")
     print("  Tools     : add_expense, list_expenses, delete_expense, get_spending_summary,")

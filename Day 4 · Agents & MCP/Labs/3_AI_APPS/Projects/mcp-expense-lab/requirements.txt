@@ -1,7 +1,7 @@
-﻿streamlit
-openai
+streamlit>=1.50
+openai>=2.0
 python-dotenv
-mcp[cli]
+mcp>=2.0,<3
 httpx
 pandas
 tzdata
