@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 venv/
 .server.log
+Day 3 - Tools & Workflows/Learning/llm_logs/
+
+# Workshop apps (instructor-only) - any folder named Workshop, at any depth
+Workshop/
